@@ -12,6 +12,9 @@ export interface RoomSnapshot {
   status: RoomStatus;
   hostParticipantId: string;
   isHost: boolean;
+  drawerParticipantId: string | null;
+  drawerName: string | null;
+  secretWord: string | null;
   participants: Participant[];
   availableWords: string[];
   roles: ParticipantRole[];

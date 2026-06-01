@@ -17,6 +17,9 @@ describe("api service", () => {
             status: "lobby",
             hostParticipantId: "p1",
             isHost: true,
+            drawerParticipantId: null,
+            drawerName: null,
+            secretWord: null,
             participants: [],
             availableWords: [],
             roles: []
@@ -46,6 +49,9 @@ describe("api service", () => {
             status: "lobby",
             hostParticipantId: "p1",
             isHost: true,
+            drawerParticipantId: null,
+            drawerName: null,
+            secretWord: null,
             participants: [],
             availableWords: [],
             roles: []
@@ -72,6 +78,9 @@ describe("api service", () => {
             status: "playing",
             hostParticipantId: "p1",
             isHost: true,
+            drawerParticipantId: "p1",
+            drawerName: "Alice",
+            secretWord: "rocket",
             participants: [],
             availableWords: [],
             roles: []

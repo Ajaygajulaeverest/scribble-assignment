@@ -11,6 +11,8 @@ export interface Room {
   code: string;
   status: RoomStatus;
   hostParticipantId: string;
+  drawerParticipantId?: string;
+  word?: string;
   participants: Participant[];
   createdAt: string;
   updatedAt: string;
@@ -21,6 +23,9 @@ export interface RoomSnapshot {
   status: RoomStatus;
   hostParticipantId: string;
   isHost: boolean;
+  drawerParticipantId: string | null;
+  drawerName: string | null;
+  secretWord: string | null;
   participants: Participant[];
   availableWords: string[];
   roles: ParticipantRole[];

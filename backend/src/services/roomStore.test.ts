@@ -7,7 +7,7 @@ describe("roomStore", () => {
   });
 
   it("createRoom returns a room with a 4-character uppercase code", () => {
-    const result = createRoom("Alice");
+    const result = createRoom(" Alice ");
 
     expect(result.room.code).toMatch(/^[A-Z0-9]{4}$/);
     expect(result.room.participants).toHaveLength(1);
@@ -74,5 +74,62 @@ describe("roomStore", () => {
 
     expect(result.ok).toBe(true);
     expect(result.ok ? result.room.status : null).toBe("playing");
+  });
+
+  it("assigns the first participant as drawer when the game starts", () => {
+    const host = createRoom("Alice");
+    joinRoom(host.room.code, "Bob");
+
+    const result = startGame(host.room.code, host.participantId);
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.room.drawerParticipantId : null).toBe(host.participantId);
+  });
+
+  it("selects the first starter word deterministically when the game starts", () => {
+    const host = createRoom("Alice");
+    joinRoom(host.room.code, "Bob");
+
+    const result = startGame(host.room.code, host.participantId);
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.room.word : null).toBe("rocket");
+  });
+
+  it("shows drawer identity to all participants and the secret word only to the drawer", () => {
+    const host = createRoom("Alice");
+    const guest = joinRoom(host.room.code, "Bob");
+
+    expect(guest).not.toBeNull();
+    const result = startGame(host.room.code, host.participantId);
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    const drawerSnapshot = toRoomSnapshot(result.room, host.participantId);
+    const guesserSnapshot = toRoomSnapshot(result.room, guest!.participantId);
+    const anonymousSnapshot = toRoomSnapshot(result.room);
+    const unknownViewerSnapshot = toRoomSnapshot(result.room, "unknown");
+
+    expect(drawerSnapshot.drawerParticipantId).toBe(host.participantId);
+    expect(drawerSnapshot.drawerName).toBe("Alice");
+    expect(drawerSnapshot.secretWord).toBe("rocket");
+    expect(guesserSnapshot.drawerParticipantId).toBe(host.participantId);
+    expect(guesserSnapshot.drawerName).toBe("Alice");
+    expect(guesserSnapshot.secretWord).toBeNull();
+    expect(anonymousSnapshot.secretWord).toBeNull();
+    expect(unknownViewerSnapshot.secretWord).toBeNull();
+  });
+
+  it("does not expose drawer or secret word before the game starts", () => {
+    const host = createRoom("Alice");
+
+    const snapshot = toRoomSnapshot(host.room, host.participantId);
+
+    expect(snapshot.drawerParticipantId).toBeNull();
+    expect(snapshot.drawerName).toBeNull();
+    expect(snapshot.secretWord).toBeNull();
   });
 });

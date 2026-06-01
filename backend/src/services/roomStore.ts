@@ -29,18 +29,14 @@ function generateUniqueCode() {
   return code;
 }
 
-function displayName(name?: string) {
-  return name || "Player";
-}
-
 function normalizeCode(code: string) {
   return code.trim().toUpperCase();
 }
 
-function createParticipant(name?: string): Participant {
+function createParticipant(name: string): Participant {
   return {
     id: randomUUID(),
-    name: displayName(name),
+    name: name.trim(),
     joinedAt: now()
   };
 }
@@ -53,7 +49,7 @@ export function listWords() {
   return [...STARTER_WORDS];
 }
 
-export function createRoom(playerName?: string) {
+export function createRoom(playerName: string) {
   const participant = createParticipant(playerName);
   const room: Room = {
     code: generateUniqueCode(),
@@ -72,7 +68,7 @@ export function createRoom(playerName?: string) {
   };
 }
 
-export function joinRoom(code: string, playerName?: string) {
+export function joinRoom(code: string, playerName: string) {
   const room = rooms.get(normalizeCode(code));
 
   if (!room) {
@@ -102,11 +98,24 @@ export function saveRoom(room: Room) {
 }
 
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
+  const drawer = room.drawerParticipantId
+    ? room.participants.find((participant) => participant.id === room.drawerParticipantId) ?? null
+    : null;
+  const canSeeSecretWord = Boolean(
+    room.status === "playing" &&
+      room.word &&
+      room.drawerParticipantId &&
+      viewerParticipantId === room.drawerParticipantId
+  );
+
   return {
     code: room.code,
     status: room.status,
     hostParticipantId: room.hostParticipantId,
     isHost: viewerParticipantId === room.hostParticipantId,
+    drawerParticipantId: room.status === "playing" ? room.drawerParticipantId ?? null : null,
+    drawerName: room.status === "playing" ? drawer?.name ?? null : null,
+    secretWord: canSeeSecretWord ? room.word ?? null : null,
     participants: room.participants.map((participant) => ({ ...participant })),
     availableWords: listWords(),
     roles: [...STARTER_ROLES]
@@ -161,7 +170,19 @@ export function startGame(code: string, participantId: string): StartGameResult 
     };
   }
 
+  const [word] = STARTER_WORDS;
+
+  if (!word) {
+    return {
+      ok: false,
+      statusCode: 500,
+      message: "No starter words are available"
+    };
+  }
+
   room.status = "playing";
+  room.drawerParticipantId = room.participants[0].id;
+  room.word = word;
   room.updatedAt = now();
   rooms.set(room.code, room);
 
