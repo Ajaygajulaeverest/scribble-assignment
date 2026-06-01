@@ -33,6 +33,10 @@ function displayName(name?: string) {
   return name || "Player";
 }
 
+function normalizeCode(code: string) {
+  return code.trim().toUpperCase();
+}
+
 function createParticipant(name?: string): Participant {
   return {
     id: randomUUID(),
@@ -54,6 +58,7 @@ export function createRoom(playerName?: string) {
   const room: Room = {
     code: generateUniqueCode(),
     status: "lobby",
+    hostParticipantId: participant.id,
     participants: [participant],
     createdAt: now(),
     updatedAt: now()
@@ -68,7 +73,7 @@ export function createRoom(playerName?: string) {
 }
 
 export function joinRoom(code: string, playerName?: string) {
-  const room = rooms.get(code);
+  const room = rooms.get(normalizeCode(code));
 
   if (!room) {
     return null;
@@ -86,7 +91,7 @@ export function joinRoom(code: string, playerName?: string) {
 }
 
 export function getRoom(code: string) {
-  const room = rooms.get(code);
+  const room = rooms.get(normalizeCode(code));
   return room ? cloneRoom(room) : null;
 }
 
@@ -97,13 +102,75 @@ export function saveRoom(room: Room) {
 }
 
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
-  void viewerParticipantId;
-
   return {
     code: room.code,
     status: room.status,
+    hostParticipantId: room.hostParticipantId,
+    isHost: viewerParticipantId === room.hostParticipantId,
     participants: room.participants.map((participant) => ({ ...participant })),
     availableWords: listWords(),
     roles: [...STARTER_ROLES]
   };
+}
+
+export type StartGameResult =
+  | {
+      ok: true;
+      room: Room;
+    }
+  | {
+      ok: false;
+      statusCode: number;
+      message: string;
+    };
+
+export function startGame(code: string, participantId: string): StartGameResult {
+  const room = rooms.get(normalizeCode(code));
+
+  if (!room) {
+    return {
+      ok: false,
+      statusCode: 404,
+      message: "Unable to load room"
+    };
+  }
+
+  const participantExists = room.participants.some((participant) => participant.id === participantId);
+
+  if (!participantExists) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Participant is not in this room"
+    };
+  }
+
+  if (room.hostParticipantId !== participantId) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Only the host can start the game"
+    };
+  }
+
+  if (room.participants.length < 2) {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "At least 2 players are required to start"
+    };
+  }
+
+  room.status = "playing";
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return {
+    ok: true,
+    room: cloneRoom(room)
+  };
+}
+
+export function resetRoomsForTests() {
+  rooms.clear();
 }
