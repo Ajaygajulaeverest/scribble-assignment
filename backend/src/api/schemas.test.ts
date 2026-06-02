@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createRoomSchema, joinRoomSchema, roomCodeParamsSchema, startGameSchema } from "./schemas.js";
+import {
+  clearDrawingSchema,
+  createRoomSchema,
+  joinRoomSchema,
+  roomCodeParamsSchema,
+  startGameSchema,
+  submitGuessSchema,
+  updateDrawingSchema
+} from "./schemas.js";
 
 describe("schemas", () => {
   it("createRoomSchema trims and accepts a valid body with playerName", () => {
@@ -39,5 +47,30 @@ describe("schemas", () => {
   it("startGameSchema requires a participant id", () => {
     expect(startGameSchema.parse({ participantId: "p1" }).participantId).toBe("p1");
     expect(() => startGameSchema.parse({ participantId: " " })).toThrow("Participant id is required");
+  });
+
+  it("updateDrawingSchema requires participant id and drawing payload", () => {
+    const result = updateDrawingSchema.parse({
+      participantId: "p1",
+      drawing: { strokes: [{ points: [{ x: 1, y: 2 }] }] }
+    });
+
+    expect(result.drawing.strokes[0].points[0]).toEqual({ x: 1, y: 2 });
+    expect(() => updateDrawingSchema.parse({ participantId: " ", drawing: { strokes: [] } })).toThrow(
+      "Participant id is required"
+    );
+    expect(() => updateDrawingSchema.parse({ participantId: "p1" })).toThrow();
+  });
+
+  it("clearDrawingSchema requires a participant id", () => {
+    expect(clearDrawingSchema.parse({ participantId: "p1" }).participantId).toBe("p1");
+    expect(() => clearDrawingSchema.parse({ participantId: " " })).toThrow("Participant id is required");
+  });
+
+  it("submitGuessSchema trims and rejects empty guesses", () => {
+    const result = submitGuessSchema.parse({ participantId: "p1", guessText: " Rocket " });
+
+    expect(result.guessText).toBe("Rocket");
+    expect(() => submitGuessSchema.parse({ participantId: "p1", guessText: " " })).toThrow("Guess is required");
   });
 });
