@@ -1,5 +1,5 @@
 export type ParticipantRole = "drawer" | "guesser";
-export type RoomStatus = "lobby" | "playing";
+export type RoomStatus = "lobby" | "playing" | "result";
 
 export interface DrawingPoint {
   x: number;
@@ -58,6 +58,7 @@ export interface RoomSnapshot {
   drawerParticipantId: string | null;
   drawerName: string | null;
   secretWord: string | null;
+  correctWord: string | null;
   scores: ParticipantScore[];
   drawing: DrawingState;
   guesses: GuessEntry[];

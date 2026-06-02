@@ -125,6 +125,7 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
   const drawer = room.drawerParticipantId
     ? room.participants.find((participant) => participant.id === room.drawerParticipantId) ?? null
     : null;
+  const hasRoundDrawer = room.status === "playing" || room.status === "result";
   const canSeeSecretWord = Boolean(
     room.status === "playing" &&
       room.word &&
@@ -137,9 +138,10 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
     status: room.status,
     hostParticipantId: room.hostParticipantId,
     isHost: viewerParticipantId === room.hostParticipantId,
-    drawerParticipantId: room.status === "playing" ? room.drawerParticipantId ?? null : null,
-    drawerName: room.status === "playing" ? drawer?.name ?? null : null,
+    drawerParticipantId: hasRoundDrawer ? room.drawerParticipantId ?? null : null,
+    drawerName: hasRoundDrawer ? drawer?.name ?? null : null,
     secretWord: canSeeSecretWord ? room.word ?? null : null,
+    correctWord: room.status === "result" ? room.word ?? null : null,
     scores: room.participants.map((participant) => ({
       participantId: participant.id,
       participantName: participant.name,
@@ -367,6 +369,54 @@ export function submitGuess(code: string, participantId: string, guessText: stri
       submittedAt: now()
     }
   ];
+
+  if (isCorrect) {
+    room.status = "result";
+  }
+
+  return saveActionRoom(room);
+}
+
+export function restartGame(code: string, participantId: string): RoomActionResult {
+  const roomResult = getMutableRoom(code);
+
+  if (!roomResult.ok) {
+    return roomResult;
+  }
+
+  const room = roomResult.room;
+  const participant = findParticipant(room, participantId);
+
+  if (!participant) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Participant is not in this room"
+    };
+  }
+
+  if (room.hostParticipantId !== participantId) {
+    return {
+      ok: false,
+      statusCode: 403,
+      message: "Only the host can restart the room"
+    };
+  }
+
+  if (room.status !== "result") {
+    return {
+      ok: false,
+      statusCode: 400,
+      message: "Room is not ready to restart"
+    };
+  }
+
+  room.status = "lobby";
+  delete room.drawerParticipantId;
+  delete room.word;
+  delete room.scores;
+  delete room.drawing;
+  delete room.guesses;
 
   return saveActionRoom(room);
 }

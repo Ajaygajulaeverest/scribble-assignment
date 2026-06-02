@@ -56,6 +56,10 @@ export const clearDrawingSchema = z.object({
   participantId: z.string().trim().min(1, "Participant id is required")
 });
 
+export const restartGameSchema = z.object({
+  participantId: z.string().trim().min(1, "Participant id is required")
+});
+
 export const submitGuessSchema = z.object({
   participantId: z.string().trim().min(1, "Participant id is required"),
   guessText: z.string().trim().min(1, "Guess is required")

@@ -10,6 +10,7 @@ function mockRoom(overrides = {}) {
     drawerParticipantId: null,
     drawerName: null,
     secretWord: null,
+    correctWord: null,
     scores: [],
     drawing: { strokes: [] },
     guesses: [],
@@ -123,6 +124,24 @@ describe("api service", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("/rooms/ABCD/clear"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ participantId: "p1" })
+      })
+    );
+  });
+
+  it("restartGame sends POST to /rooms/:code/restart with participantId", async () => {
+    const mockResponse = {
+      ok: true,
+      json: () => Promise.resolve({ room: mockRoom() })
+    };
+    vi.mocked(fetch).mockResolvedValue(mockResponse as unknown as Response);
+
+    await api.restartGame("ABCD", "p1");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/rooms/ABCD/restart"),
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ participantId: "p1" })

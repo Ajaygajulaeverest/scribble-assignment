@@ -1,5 +1,5 @@
 export type ParticipantRole = "drawer" | "guesser";
-export type RoomStatus = "lobby" | "playing";
+export type RoomStatus = "lobby" | "playing" | "result";
 
 export interface DrawingPoint {
   x: number;
@@ -44,6 +44,7 @@ export interface RoomSnapshot {
   drawerParticipantId: string | null;
   drawerName: string | null;
   secretWord: string | null;
+  correctWord: string | null;
   scores: ParticipantScore[];
   drawing: DrawingState;
   guesses: GuessEntry[];
@@ -110,6 +111,12 @@ export const api = {
   },
   clearDrawing(code: string, participantId: string) {
     return request<{ room: RoomSnapshot }>(`/rooms/${encodeURIComponent(code)}/clear`, {
+      method: "POST",
+      body: JSON.stringify({ participantId })
+    });
+  },
+  restartGame(code: string, participantId: string) {
+    return request<{ room: RoomSnapshot }>(`/rooms/${encodeURIComponent(code)}/restart`, {
       method: "POST",
       body: JSON.stringify({ participantId })
     });

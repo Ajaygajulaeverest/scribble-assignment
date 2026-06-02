@@ -3,6 +3,7 @@ import {
   clearDrawingSchema,
   createRoomSchema,
   joinRoomSchema,
+  restartGameSchema,
   roomCodeParamsSchema,
   startGameSchema,
   submitGuessSchema,
@@ -65,6 +66,11 @@ describe("schemas", () => {
   it("clearDrawingSchema requires a participant id", () => {
     expect(clearDrawingSchema.parse({ participantId: "p1" }).participantId).toBe("p1");
     expect(() => clearDrawingSchema.parse({ participantId: " " })).toThrow("Participant id is required");
+  });
+
+  it("restartGameSchema requires a participant id", () => {
+    expect(restartGameSchema.parse({ participantId: "p1" }).participantId).toBe("p1");
+    expect(() => restartGameSchema.parse({ participantId: " " })).toThrow("Participant id is required");
   });
 
   it("submitGuessSchema trims and rejects empty guesses", () => {

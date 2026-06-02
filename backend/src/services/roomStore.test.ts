@@ -5,6 +5,7 @@ import {
   getRoom,
   joinRoom,
   resetRoomsForTests,
+  restartGame,
   startGame,
   submitGuess,
   toRoomSnapshot,
@@ -264,7 +265,7 @@ describe("roomStore", () => {
     });
   });
 
-  it("scores guesses deterministically and exposes history in snapshots", () => {
+  it("scores guesses deterministically, ends the round on correct guess, and exposes result history", () => {
     const host = createRoom("Alice");
     const guest = joinRoom(host.room.code, "Bob");
     expect(guest).not.toBeNull();
@@ -276,14 +277,23 @@ describe("roomStore", () => {
 
     expect(wrongGuess.ok).toBe(true);
     expect(correctGuess.ok).toBe(true);
-    expect(repeatedCorrectGuess.ok).toBe(true);
+    expect(repeatedCorrectGuess).toMatchObject({
+      ok: false,
+      statusCode: 400,
+      message: "Round is not active"
+    });
 
-    if (!repeatedCorrectGuess.ok) {
+    if (!correctGuess.ok) {
       return;
     }
 
-    const snapshot = toRoomSnapshot(repeatedCorrectGuess.room, guest!.participantId);
+    const snapshot = toRoomSnapshot(correctGuess.room, guest!.participantId);
 
+    expect(snapshot.status).toBe("result");
+    expect(snapshot.correctWord).toBe("rocket");
+    expect(snapshot.secretWord).toBeNull();
+    expect(snapshot.drawerParticipantId).toBe(host.participantId);
+    expect(snapshot.drawerName).toBe("Alice");
     expect(snapshot.scores).toEqual([
       { participantId: host.participantId, participantName: "Alice", score: 0 },
       { participantId: guest!.participantId, participantName: "Bob", score: 100 }
@@ -294,8 +304,103 @@ describe("roomStore", () => {
       scoreDelta: guess.scoreDelta
     }))).toEqual([
       { text: "pizza", isCorrect: false, scoreDelta: 0 },
-      { text: "RoCkEt", isCorrect: true, scoreDelta: 100 },
-      { text: "rocket", isCorrect: true, scoreDelta: 0 }
+      { text: "RoCkEt", isCorrect: true, scoreDelta: 100 }
+    ]);
+  });
+
+  it("rejects drawing, clear, and guess actions in result state", () => {
+    const host = createRoom("Alice");
+    const guest = joinRoom(host.room.code, "Bob");
+    expect(guest).not.toBeNull();
+    startGame(host.room.code, host.participantId);
+    const correctGuess = submitGuess(host.room.code, guest!.participantId, "rocket");
+    expect(correctGuess.ok).toBe(true);
+
+    expect(updateDrawing(host.room.code, host.participantId, { strokes: [] })).toMatchObject({
+      ok: false,
+      statusCode: 400,
+      message: "Round is not active"
+    });
+    expect(clearDrawing(host.room.code, host.participantId)).toMatchObject({
+      ok: false,
+      statusCode: 400,
+      message: "Round is not active"
+    });
+    expect(submitGuess(host.room.code, guest!.participantId, "rocket")).toMatchObject({
+      ok: false,
+      statusCode: 400,
+      message: "Round is not active"
+    });
+  });
+
+  it("rejects restart from non-hosts, unknown participants, and rooms outside result state", () => {
+    const host = createRoom("Alice");
+    const guest = joinRoom(host.room.code, "Bob");
+    expect(guest).not.toBeNull();
+
+    expect(restartGame(host.room.code, host.participantId)).toMatchObject({
+      ok: false,
+      statusCode: 400,
+      message: "Room is not ready to restart"
+    });
+
+    startGame(host.room.code, host.participantId);
+    submitGuess(host.room.code, guest!.participantId, "rocket");
+
+    expect(restartGame(host.room.code, "unknown")).toMatchObject({
+      ok: false,
+      statusCode: 403,
+      message: "Participant is not in this room"
+    });
+    expect(restartGame(host.room.code, guest!.participantId)).toMatchObject({
+      ok: false,
+      statusCode: 403,
+      message: "Only the host can restart the room"
+    });
+    expect(restartGame("ZZZZ", host.participantId)).toMatchObject({
+      ok: false,
+      statusCode: 404,
+      message: "Unable to load room"
+    });
+  });
+
+  it("host restart preserves room identity and players while clearing round state", () => {
+    const host = createRoom("Alice");
+    const guest = joinRoom(host.room.code, "Bob");
+    expect(guest).not.toBeNull();
+    startGame(host.room.code, host.participantId);
+
+    const drawing = { strokes: [{ points: [{ x: 12, y: 24 }, { x: 30, y: 42 }] }] };
+    updateDrawing(host.room.code, host.participantId, drawing);
+    const resultGuess = submitGuess(host.room.code, guest!.participantId, "rocket");
+    expect(resultGuess.ok).toBe(true);
+
+    const restartResult = restartGame(host.room.code, host.participantId);
+    expect(restartResult.ok).toBe(true);
+
+    if (!restartResult.ok) {
+      return;
+    }
+
+    const snapshot = toRoomSnapshot(restartResult.room, host.participantId);
+
+    expect(snapshot.code).toBe(host.room.code);
+    expect(snapshot.status).toBe("lobby");
+    expect(snapshot.hostParticipantId).toBe(host.participantId);
+    expect(snapshot.participants.map((participant) => participant.id)).toEqual([
+      host.participantId,
+      guest!.participantId
+    ]);
+    expect(snapshot.participants.map((participant) => participant.name)).toEqual(["Alice", "Bob"]);
+    expect(snapshot.drawerParticipantId).toBeNull();
+    expect(snapshot.drawerName).toBeNull();
+    expect(snapshot.secretWord).toBeNull();
+    expect(snapshot.correctWord).toBeNull();
+    expect(snapshot.drawing).toEqual({ strokes: [] });
+    expect(snapshot.guesses).toEqual([]);
+    expect(snapshot.scores).toEqual([
+      { participantId: host.participantId, participantName: "Alice", score: 0 },
+      { participantId: guest!.participantId, participantName: "Bob", score: 0 }
     ]);
   });
 });

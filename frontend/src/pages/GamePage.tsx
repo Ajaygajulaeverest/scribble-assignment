@@ -55,7 +55,7 @@ export function GamePage() {
   }, [navigate, room]);
 
   useEffect(() => {
-    if (!room || room.status !== "playing") {
+    if (!room || (room.status !== "playing" && room.status !== "result")) {
       return undefined;
     }
 
@@ -69,7 +69,11 @@ export function GamePage() {
 
       try {
         isPolling = true;
-        await roomStore.fetchRoom();
+        const nextRoom = await roomStore.fetchRoom();
+
+        if (nextRoom?.status === "lobby" && isActive) {
+          navigate("/lobby", { replace: true });
+        }
       } catch (caughtError) {
         if (isActive) {
           setActionError(caughtError instanceof Error ? caughtError.message : "Unable to refresh game");
@@ -87,7 +91,7 @@ export function GamePage() {
       isActive = false;
       window.clearInterval(intervalId);
     };
-  }, [room?.code, room?.status, roomStore]);
+  }, [navigate, room?.code, room?.status, roomStore]);
 
   useEffect(() => {
     if (canvasRef.current && room?.drawing) {
@@ -103,6 +107,7 @@ export function GamePage() {
   const isDrawer = Boolean(participantId && room.drawerParticipantId === participantId);
   const drawerLabel = room.drawerName ?? "Waiting for drawer";
   const canDraw = isDrawer && room.status === "playing";
+  const isResult = room.status === "result";
 
   function getCanvasPoint(event: PointerEvent<HTMLCanvasElement>): DrawingPoint {
     const canvas = event.currentTarget;
@@ -188,6 +193,19 @@ export function GamePage() {
     await roomStore.submitGuess(guessText);
   }
 
+  async function handleRestartGame() {
+    try {
+      setActionError(null);
+      const nextRoom = await roomStore.restartGame();
+
+      if (nextRoom.status === "lobby") {
+        navigate("/lobby", { replace: true });
+      }
+    } catch (caughtError) {
+      setActionError(caughtError instanceof Error ? caughtError.message : "Unable to restart room");
+    }
+  }
+
   return (
     <section className="panel game-page">
       <div className="game-page__header">
@@ -246,7 +264,7 @@ export function GamePage() {
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>Playing</dd>
+                <dd>{isResult ? "Result" : "Playing"}</dd>
               </div>
               <div>
                 <dt>Drawer</dt>
@@ -259,8 +277,30 @@ export function GamePage() {
             </dl>
           </Card>
 
+          {isResult ? (
+            <Card title="Result">
+              <dl className="detail-list">
+                <div>
+                  <dt>Correct word</dt>
+                  <dd>{room.correctWord ?? "Unknown"}</dd>
+                </div>
+                <div>
+                  <dt>Round status</dt>
+                  <dd>{room.isHost ? "Ready to restart" : "Waiting for host"}</dd>
+                </div>
+              </dl>
+              {room.isHost ? (
+                <button className="button button--primary" onClick={handleRestartGame} type="button">
+                  Restart Game
+                </button>
+              ) : null}
+            </Card>
+          ) : null}
+
           <Card title="Secret Word">
-            {isDrawer && room.secretWord ? (
+            {isResult ? (
+              <p className="placeholder-note">Round complete.</p>
+            ) : isDrawer && room.secretWord ? (
               <p className="placeholder-note">{room.secretWord}</p>
             ) : (
               <p>{room.drawerName ? `${room.drawerName} knows the word.` : "The word appears when the round starts."}</p>
@@ -268,7 +308,7 @@ export function GamePage() {
           </Card>
 
           <Card title="Your Guess">
-            <GuessForm disabled={isDrawer} onSubmitGuess={handleSubmitGuess} />
+            <GuessForm disabled={isDrawer || room.status !== "playing"} onSubmitGuess={handleSubmitGuess} />
           </Card>
         </aside>
       </div>
