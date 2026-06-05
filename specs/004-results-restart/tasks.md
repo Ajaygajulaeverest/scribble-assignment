@@ -2,8 +2,9 @@
 
 ## Source
 
-- Spec: `speckit/specs/04-results-restart.md`
-- Plan: `speckit/plans/04-results-restart.md`
+- Discovery: `speckit/discovery.md`
+- Spec: `specs/004-results-restart/spec.md`
+- Plan: `specs/004-results-restart/plan.md`
 
 ## Status
 

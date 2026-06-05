@@ -219,7 +219,7 @@ export function GamePage() {
       <div className="game-page__layout">
         <aside className="game-page__sidebar game-page__sidebar--left">
           <Scoreboard scores={room.scores} />
-          <ResultPanel guesses={room.guesses} />
+          <ResultPanel correctWord={isResult ? room.correctWord : null} guesses={room.guesses} />
         </aside>
 
         <div className="game-page__main">

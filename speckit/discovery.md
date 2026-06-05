@@ -28,3 +28,18 @@
 2. Room state should continue to live entirely in memory through `backend/src/services/roomStore.ts`; no persistence layer should be introduced.
 3. The first feature slice should likely extend the existing REST API and shared room snapshot model instead of introducing a new frontend state library.
 4. The starter word list in `backend/src/seed/starterData.ts` should be used deterministically for initial gameplay rather than randomized custom packs.
+
+## Result & Restart Gaps
+
+1. The existing game state did not have a completed/result status, so clients had no durable signal that a round ended.
+2. Room snapshots did not expose a result-only correct word field for every participant after a correct guess.
+3. The result UI needed an explicit result panel that combines the revealed word with the final guess history.
+4. Restart behavior needed host-only validation and a clear definition of which round fields must be cleared.
+5. Polling clients needed a clear transition from result back to lobby after host restart.
+
+## Result & Restart Assumptions
+
+1. A correct guess immediately ends the round and transitions the room to result state.
+2. The selected word may be exposed as `correctWord` only while the room is in result state.
+3. Restart preserves the room code, host identity, and participant order while clearing round-specific state.
+4. HTTP polling remains the only synchronization mechanism; no push protocol, persistence, or authentication is introduced.

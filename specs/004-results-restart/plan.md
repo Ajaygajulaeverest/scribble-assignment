@@ -2,8 +2,9 @@
 
 ## Source
 
-- Spec: `speckit/specs/04-results-restart.md`
-- Prior feature: `speckit/specs/03-gameplay-interaction.md`
+- Discovery: `speckit/discovery.md`
+- Spec: `specs/004-results-restart/spec.md`
+- Prior feature: `specs/003-gameplay-interaction/spec.md`
 - Constitution: `speckit/constitution.md`
 
 ## Goal
